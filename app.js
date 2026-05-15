@@ -67,29 +67,33 @@ const App = (() => {
   }
 
   function _runAnalysis(silent) {
-    allScoredTrends = TRENDS_DB.map(t => {
+    // 1. STRICT FILTER: Only keep trends that belong to the selected industry
+    const industryTrends = TRENDS_DB.filter(t => 
+      t.industries.includes(brand.industry)
+    );
+
+    // 2. SCORE: Only score the trends that passed the filter
+    allScoredTrends = industryTrends.map(t => {
       let score = t.relevance;
-      if (t.industries.includes(brand.industry))  score = Math.min(100, score + 6);
-      if (t.tones.includes(brand.tone))            score = Math.min(100, score + 4);
-      if (t.platform === brand.platform)           score = Math.min(100, score + 3);
-      // Slight audience bonus
-      if (brand.audience && t.insight.toLowerCase().includes("gen z") &&
-          brand.audience.toLowerCase().includes("gen z")) score = Math.min(100, score + 3);
+      // Bonus if tone matches
+      if (t.tones.includes(brand.tone)) score = Math.min(100, score + 10);
+      // Bonus if platform matches
+      if (t.platform === brand.platform) score = Math.min(100, score + 5);
+      
       return { ...t, matchScore: Math.round(score) };
     }).sort((a, b) => b.matchScore - a.matchScore);
 
+    // 3. RESET UI
     activeFilter = "all";
-    // Reset filter chip UI
     document.querySelectorAll(".filter-chip").forEach(c => c.classList.remove("active"));
     const allChip = document.querySelector(".filter-chip");
     if (allChip) allChip.classList.add("active");
 
     _renderTrends();
     UI.renderBrandSummary(brand);
-    UI.setTrendsCount(
-      allScoredTrends.filter(t => !(t.risk === "High" && t.matchScore < 80)).length,
-      brand.name
-    );
+    
+    // Update count based on the new filtered list
+    UI.setTrendsCount(allScoredTrends.length, brand.name);
   }
 
   /* ════════════════════════════════════════
